@@ -1,0 +1,4 @@
+RewriteEngine On
+RewriteRule ^stations$ stations_list.php  [L]
+RewriteRule ^station/source/([A-Za-z0-9]+)$ new_station.php?selectedAbbr=$1 [L]
+RewriteRule ^trips/source/([A-Za-z0-9]+)/dest/([A-Za-z0-9]+)$ new_schedule.php?sourceAbbr=$1&destAbbr=$2 [L]

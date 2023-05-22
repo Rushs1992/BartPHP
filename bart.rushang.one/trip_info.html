@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Schedule</title>
+    <style>
+        .timer{
+            display: flex;
+            margin: auto;
+        }
+
+        .timer span{
+            display: block;
+            background: #000;
+            color: #fff;
+            margin-right: 5px;
+            padding: 8px;
+            border-radius: 5px;
+            font-size: 45px;
+            line-height: normal;
+            text-align: center;
+
+        }
+
+        #hours:after, #minutes:after, #seconds:after {
+            font-size: 14px;
+            line-height: normal;
+            display: block;
+            width: inherit;
+            margin-top: 10px;
+            color: #5C5757;
+            text-align: center;
+        }
+
+        #hours:after{
+            content: "Hours";
+        }
+
+        #minutes:after{
+            content: "Minutes";
+        }
+
+        #seconds:after{
+            content: "Seconds";
+        }
+
+    </style>
+</head>
+<body>
+<p id="list"></p>
+<br>
+<p id="trip"></p>
+<div>
+    <p id = "start-time"></p>
+    <p id = "end-time"></p>
+    <p id = "total-time"></p>
+    <div id = 'fares'>
+        <p id = "regular"></p>
+        <p id = "start"></p>
+        <p id = "seniorDisabled"></p>
+        <p id = "youth"></p>
+    </div>
+    <div class = "timer">
+        <span id = 'hours'>00</span>
+        <span id = 'minutes'>00</span>
+        <span id = 'seconds'>00</span>
+    </div>
+</div>
+<script>
+    const stationNameAndAbbr = {};
+    const fetchStation = 'get_stations.php';
+
+    async function fetchXML(file){
+        let response = await fetch(file);
+        let text = await response.text();
+        let parser = new DOMParser();
+        let jsonData = parser.parseFromString(text, "application/xml");
+        return jsonData;
+    }
+
+    async function storeStationNameAbbr(){
+        const stationJSON = await fetchXML(fetchStation);
+        const stations = stationJSON.getElementsByTagName('station');
+
+        for(let i = 0; i<stations.length; i++){
+            station = stations[i];
+            let name = station.getElementsByTagName('name')[0].textContent;
+            let abbr = station.getElementsByTagName('abbr')[0].textContent;
+            stationNameAndAbbr[abbr] = name;
+        }
+        document.getElementById('list').innerHTML = JSON.stringify(stationNameAndAbbr);
+    }
+    storeStationNameAbbr();
+
+    let schedule = 'schedule.php?sourceAbbr=daly&destAbbr=ssan';
+    async function getSchedule(){
+        let response = await fetch(schedule);
+        let tripInfo = await response.text();
+        let tripWithoutSymbol = tripInfo.replace(/@/g,'att-');
+        let tripInfoJson = JSON.parse(JSON.parse(tripWithoutSymbol));
+        return tripInfoJson.root.schedule.request.trip;
+    }
+
+    async function displaySchedule(){
+        let scheduleJson = await getSchedule();
+        document.getElementById('trip').innerHTML = JSON.stringify(scheduleJson);
+
+        let originTime = scheduleJson['att-origTimeMin'];
+        document.getElementById('start-time').innerHTML = "Start time: " + originTime;
+        let destinationTime = scheduleJson['att-destTimeMin'];
+        document.getElementById('end-time').innerHTML = "End time: " + destinationTime;
+        let totalTripTime = scheduleJson['att-tripTime'];
+        document.getElementById('total-time').innerHTML = "Total trip time: " + totalTripTime;
+
+        let regularFare = scheduleJson.fares.fare[0]['att-amount'];
+        document.getElementById('regular').innerHTML = "Clipper: " + regularFare;
+        let startFare = scheduleJson.fares.fare[1]['att-amount'];
+        document.getElementById('start').innerHTML = "Clipper START: " + startFare;
+        let seniorDisabledFare = scheduleJson.fares.fare[2]['att-amount'];
+        document.getElementById('seniorDisabled').innerHTML = "Senior/Disabled Clipper: " + seniorDisabledFare;
+        let youthFare = scheduleJson.fares.fare[3]['att-amount'];
+        document.getElementById('youth').innerHTML = "Youth Clipper: " + youthFare;
+
+        let origDateAndTime = scheduleJson['att-origTimeDate'] + " " + scheduleJson['att-origTimeMin'];
+
+        let origStart = new Date(origDateAndTime).getTime();
+        console.log(origStart);
+        const timer = setInterval(function(){
+
+            const currentTime = new Date().getTime();
+
+            const difference = origStart - currentTime;
+
+            const minutes = Math.floor((difference % (1000*60*60)) / (1000*60));
+            console.log(minutes);
+            const seconds = Math.floor((difference % (1000*60) / 1000));
+            console.log(seconds);
+
+            document.getElementById('minutes').innerHTML = minutes.toString();
+            document.getElementById('seconds').innerHTML = seconds.toString();
+
+        }, 1000);
+    }
+
+    displaySchedule();
+
+</script>
+</body>
+</html>
